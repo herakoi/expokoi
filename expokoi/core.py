@@ -100,7 +100,7 @@ class start:
 
     imginit = 0
 
-    modlist = ['single','adaptive','scan']
+    modlist = ['single','adaptive']
     if mode not in modlist:
       raise NotImplementedError('"{0}" mode is unknown'.format(mode))
     elif mode=='party':
@@ -229,11 +229,11 @@ class start:
 # Single-user mode
 # =====================================
   def run(self,mode='single',vlims=vlims_,flims=flims_,**kwargs):
+    global pressed
+
     imgonly = kwargs.get('imgonly')
 
-    print(imgonly)
-
-    ophands = self.mphands.Hands(max_num_hands=2 if mode=='scan' else 1)
+    ophands = self.mphands.Hands(max_num_hands=2)
 
     onmusic = False
 
@@ -244,8 +244,7 @@ class start:
     offtime = kwargs.get('off',0.05)
     tictime = time.time()
     
-    newtime = time.time()
-    oldtime = time.time()
+    newtime = [time.time(),time.time(),2]
 
     while True:
       _, opframe = self.opvideo.read()
@@ -262,26 +261,13 @@ class start:
       bhmidiv = None
 
 # ------------------------------------
+      
+      mixframe = immusic
 
-      if imgonly:
-        mixframe = immusic
-      else:
-      # opframe = cv2.resize(opframe,None,fx=immusic.shape[0]/opframe.shape[0],fy=immusic.shape[0]/opframe.shape[0])
-
-      # mixframe = np.zeros((max(opframe.shape[0], immusic.shape[0]), opframe.shape[1] + immusic.shape[1], 3), dtype=np.uint8)
-      # mixframe[:opframe.shape[0],:opframe.shape[1],:] = opframe
-      # mixframe[:immusic.shape[0],opframe.shape[1]:,:] = immusic
-
-        opframe  = cv2.resize(opframe,None,fx=0.20*immusic.shape[0]/opframe.shape[0],fy=0.20*immusic.shape[0]/opframe.shape[0])
-
-        mixframe = immusic
-        mixframe[                  int(0.01*immusic.shape[0]):opframe.shape[0]+int(0.01*immusic.shape[0]),
-                 -opframe.shape[1]-int(0.01*immusic.shape[0]):                -int(0.01*immusic.shape[0])] = opframe
-
-      fontface  = cv2.FONT_HERSHEY_SIMPLEX
+      fontface  = cv2.FONT_HERSHEY_DUPLEX
       fontscale = 1
       fontcolor = (255,255,255)
-      thickness = 2
+      thickness = 1
 
       text = [['immagine','precedente'],['immagine','successiva']]
 
@@ -296,12 +282,17 @@ class start:
       x1 = [50-int(0.10*wtmax)+ti*int(4*wtmax/3) for ti in range(len(text))]
       y1 = [50-int(0.10*wtmax) for ti in range(len(text))]
       x2 = [50+int(0.10*wtmax)+wtmax+int(4*wtmax/3)*ti for ti in range(len(text))]
-      y2 = [50+int(0.10*wtmax)+htmax+int(3*htmax/2) for ti in range(len(text))]
+      y2 = [55+int(0.10*wtmax)+htmax+int(3*htmax/2) for ti in range(len(text))]
 
       for ti in range(len(text)):
 
         button = mixframe[y1[ti]:y2[ti],x1[ti]:x2[ti]].copy()
-        button = cv2.addWeighted(button,0.5,button*0,0.5,1.0)
+        weight = np.zeros(button.shape,dtype=button.dtype)
+
+        if time.time()-newtime[ti]>0.10:
+          weight[:,:int((time.time()-newtime[ti])*button.shape[1]/newtime[2])] = 255
+
+        button = cv2.addWeighted(button,0.50,weight,0.50,1.00)
 
         mixframe[y1[ti]:y2[ti],x1[ti]:x2[ti]] = button.copy() 
 
@@ -315,90 +306,78 @@ class start:
 # ------------------------------------
 
       if imhands.multi_hand_landmarks:
-        if mode=='scan':
-          pxmusic = [0,0,50]
-          for mi, immarks in enumerate(imhands.multi_hand_landmarks):
-            imlabel = imhands.multi_handedness[mi].classification[0].label
-            
-            self.mpdraws.draw_landmarks(immusic,immarks,self.mphands.HAND_CONNECTIONS,None)
-            self.mpdraws.draw_landmarks(opframe,immarks,self.mphands.HAND_CONNECTIONS,None)
+        for mi, immarks in enumerate(imhands.multi_hand_landmarks):
+          imlabel = imhands.multi_handedness[mi].classification[0].label
 
-            px, py, _ = self.posndraw(immusic,immarks,imlabel,False)
+          _       = self.posndraw(opframe,immarks,imlabel,True)
 
-            if imlabel=='Right': pxmusic[0] = px
-            if imlabel=='Left':  pxmusic[1] = py
+          if self.oppatch is None:
+            pxindex = immarks.landmark[self.opindex]
+            pxthumb = immarks.landmark[self.opthumb]
+            pxpatch = [int(np.abs(pxindex.x-pxthumb.x)*immusic.shape[1]),
+                       int(np.abs(pxindex.y-pxthumb.y)*immusic.shape[0])]
 
+            _ = self.posndraw(immusic,immarks,imlabel,True)
+            pxmusic = [0.50*(pxindex.x+pxthumb.x),0.50*(pxindex.y+pxthumb.y),0.50*(pxindex.z+pxthumb.z)]
+
+            for im in [immusic,opframe]:
+              cv2.rectangle(im,(int(pxthumb.x*im.shape[1]),int(pxthumb.y*im.shape[0])),
+                               (int(pxindex.x*im.shape[1]),int(pxindex.y*im.shape[0])),self.opcolor[imlabel],1)
+              cv2.circle(im,(int(pxmusic[0]*im.shape[1]),int(pxmusic[1]*im.shape[0])),2,self.opcolor[imlabel],-1)
+
+            pxmusic = [int(pxmusic[0]*immusic.shape[1]),
+                       int(pxmusic[1]*immusic.shape[0]),int(pxmusic[2]*300)]
+
+          else:
+            pxmusic = self.posndraw(immusic,immarks,imlabel,True)
             pxpatch = [self.oppatch,self.oppatch]
 
-          cv2.circle(immusic,(pxmusic[0],pxmusic[1]),pxmusic[2],(255,255,255),-1)
+          if (mode in ['single','adaptive'] and imlabel=='Left') or (mode=='party'):
+            bhmidif, bhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
 
-          bhmidif, bhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
+          if (mode in ['single','adaptive'] and imlabel=='Right'):
+            rhmidif, rhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
 
-        else:
-          for mi, immarks in enumerate(imhands.multi_hand_landmarks):
-            imlabel = imhands.multi_handedness[mi].classification[0].label
+            bhmidif = rhmidif if bhmidif is None else int(0.50*(rhmidif+bhmidif))
+            bhmidiv = rhmidiv if bhmidiv is None else int(0.50*(rhmidiv+bhmidiv))
 
-            _       = self.posndraw(opframe,immarks,imlabel,True)
+        if (bhmidif is not None) and (bhmidiv is not None):
+          if time.time()-tictime>toctime and not onmusic:
+            self.midiout.send(mido.Message('note_on',channel=8,note=bhmidif,velocity=bhmidiv))
+            pxmusicold = pxmusic
+            onmusic = True
 
-            if self.oppatch is None:
-              pxindex = immarks.landmark[self.opindex]
-              pxthumb = immarks.landmark[self.opthumb]
-              pxpatch = [int(np.abs(pxindex.x-pxthumb.x)*immusic.shape[1]),
-                         int(np.abs(pxindex.y-pxthumb.y)*immusic.shape[0])]
-
-              _ = self.posndraw(immusic,immarks,imlabel,True)
-              pxmusic = [0.50*(pxindex.x+pxthumb.x),0.50*(pxindex.y+pxthumb.y),0.50*(pxindex.z+pxthumb.z)]
-
-              for im in [immusic,opframe]:
-                cv2.rectangle(im,(int(pxthumb.x*im.shape[1]),int(pxthumb.y*im.shape[0])),
-                                 (int(pxindex.x*im.shape[1]),int(pxindex.y*im.shape[0])),self.opcolor[imlabel],1)
-                cv2.circle(im,(int(pxmusic[0]*im.shape[1]),int(pxmusic[1]*im.shape[0])),2,self.opcolor[imlabel],-1)
- 
-              pxmusic = [int(pxmusic[0]*immusic.shape[1]),
-                         int(pxmusic[1]*immusic.shape[0]),int(pxmusic[2]*300)]
-
-            else:
-              pxmusic = self.posndraw(immusic,immarks,imlabel,True)
-              pxpatch = [self.oppatch,self.oppatch]
-
-            if (mode in ['single','adaptive'] and imlabel=='Left') or (mode=='party'):
-              bhmidif, bhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
+          if time.time()-tictime>toctime+offtime and np.hypot(pxmusicold[0]-pxmusic[0],pxmusicold[1]-pxmusic[1])>pxshift:
+            self.midiout.send(mido.Message('note_off',channel=8,note=bhmidif))
+            self.panic(); onmusic = False
             
-            if (mode in ['single','adaptive'] and imlabel=='Right'):
-              rhmidif, rhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
+            tictime = time.time()
 
-              bhmidif = rhmidif if bhmidif is None else int(0.50*(rhmidif+bhmidif))
-              bhmidiv = rhmidiv if bhmidiv is None else int(0.50*(rhmidiv+bhmidiv))
+          if x1[0]<=pxmusic[0]<=x2[0] and y1[0]<=pxmusic[1]<=y2[0]:
+            if time.time()-newtime[0]>newtime[2]:
+              self.panic()
+              pressed = 'right'
+              break
+          else:
+            newtime[0] = time.time()
 
-        if mode in ['single','adaptive','scan']:
-          if (bhmidif is not None) and (bhmidiv is not None):
-            if time.time()-tictime>toctime and not onmusic:
-              self.midiout.send(mido.Message('note_on',channel=8,note=bhmidif,velocity=bhmidiv))
-              pxmusicold = pxmusic
-              onmusic = True
+          if x1[1]<=pxmusic[0]<=x2[1] and y1[1]<=pxmusic[1]<=y2[1]:
+            if time.time()-newtime[1]>newtime[2]:
+              self.panic()
+              pressed = 'left'
+              break
+          else:
+            newtime[1] = time.time()
+        else: self.panic()
+      else: 
+        newtime[0] = time.time()
+        newtime[1] = time.time()
+        self.panic()
 
-            if time.time()-tictime>toctime+offtime and np.hypot(pxmusicold[0]-pxmusic[0],pxmusicold[1]-pxmusic[1])>pxshift:
-              self.midiout.send(mido.Message('note_off',channel=8,note=bhmidif))
-              self.panic(); onmusic = False
-              
-              tictime = time.time()
-          else: self.panic()
-
-        if x1[0]<=pxmusic[0]<=x2[0] and y1[0]<=pxmusic[1]<=y2[0]:
-          if time.time()-newtime>5:
-            self.panic()
-            break
-        else:
-          newtime = time.time()
-
-        if x1[1]<=pxmusic[0]<=x2[1] and y1[1]<=pxmusic[1]<=y2[1]:
-          if time.time()-oldtime>5:
-            self.panic()
-            break
-        else:
-          oldtime = time.time()
-
-      else: self.panic()
+      if not imgonly:
+        opframe  = cv2.resize(opframe,None,fx=0.20*immusic.shape[0]/opframe.shape[0],fy=0.20*immusic.shape[0]/opframe.shape[0])
+        mixframe[                  int(0.01*immusic.shape[0]):opframe.shape[0]+int(0.01*immusic.shape[0]),
+                 -opframe.shape[1]-int(0.01*immusic.shape[0]):                -int(0.01*immusic.shape[0])] = opframe
 
       # Show the combined image in a window
       cv2.imshow('mixframe',mixframe)
