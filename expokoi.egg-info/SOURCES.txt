@@ -1,0 +1,12 @@
+LICENSE.md
+README.md
+pyproject.toml
+expokoi/__init__.py
+expokoi/__main__.py
+expokoi/core.py
+expokoi.egg-info/PKG-INFO
+expokoi.egg-info/SOURCES.txt
+expokoi.egg-info/dependency_links.txt
+expokoi.egg-info/entry_points.txt
+expokoi.egg-info/requires.txt
+expokoi.egg-info/top_level.txt

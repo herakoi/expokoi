@@ -1,0 +1,11 @@
+mido>=1.2
+python-rtmidi==1.4.9
+opencv-python>=4.6
+numpy>=1.23
+pynput>=1.7
+
+[:platform_system != "Darwin" or platform_machine != "arm64"]
+mediapipe
+
+[:platform_system == "Darwin" and platform_machine == "arm64"]
+mediapipe-silicon

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["expokoi*"]
+exclude = ["images*"]
+
+[project]
+name = "expokoi"
+version = "0.1.0"
+authors = [
+  { name="Luca Di Mascolo", email="lucadimascolo@gmail.com" },
+  { name="Michele Ginolfi", email="micheleginolfi@gmail.com" },
+]
+description = "A sonification tool"
+readme = "README.md"
+requires-python = ">=3.7"
+license = { text = "MIT License" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+]
+dependencies = ["mido>=1.2","python-rtmidi==1.4.9","opencv-python>=4.6","numpy>=1.23","pynput>=1.7",
+                'mediapipe; platform_system != "Darwin" or  platform_machine != "arm64"',
+        'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"']
+
+[project.urls]
+"Homepage" = "https://github.com/lucadimascolo/expokoi"
+"Bug Tracker" = "https://github.com/lucadimascolo/expokoi/issues"
+
+[project.scripts]
+expokoi = "expokoi:basic"
