@@ -9,6 +9,8 @@ import mediapipe as mp
 import tkinter
 import tkinter.filedialog as filedialog
 
+import pygame; pygame.init()
+
 from pynput import keyboard
 from pynput.keyboard import Key
 
@@ -28,6 +30,7 @@ fill = 1.00
 root.withdraw()
 
 global pressed; pressed = None
+global  screen; screen  = None
 
 # Convert BGR image into HSV
 # -------------------------------------
@@ -70,16 +73,13 @@ def nametopitch(name):
 def on_press(key):
   global pressed
   if key == Key.esc:   pressed = 'esc'
-  if key == Key.right: pressed = 'right'
-  if key == Key.left:  pressed = 'left'
-  if key == Key.up:    pressed = 'up'
-  if key == Key.down:  pressed = 'down'
 
 # Build the herakoi player
 # =====================================
 class start:
   def __init__(self,image=None,mode='single',port={},video=0,box=2,switch=True,**kwargs):
     global pressed
+    global screen
 
     self.listener = keyboard.Listener(on_press=on_press)
     self.listener.start()  
@@ -97,11 +97,9 @@ class start:
 
     imginit = 0
 
-    modlist = ['single','adaptive','scan']
+    modlist = ['single']
     if mode not in modlist:
       raise NotImplementedError('"{0}" mode is unknown'.format(mode))
-    elif mode=='party':
-      raise NotImplementedError('"party mode" not implemented yet')
 
     modinit = modlist.index(mode)
 
@@ -121,15 +119,11 @@ class start:
     self.imgfull = kwargs.get('fullscreen',False)
     self.padfull = kwargs.get('pad',False) if self.imgfull else False
 
+    screen = pygame.display.set_mode((scrw,scrh), pygame.FULLSCREEN)
+
     while True:
       self.opvideo = cv2.VideoCapture(video)
       self.opmusic = gethsv(imgpath[imginit])
-
-      if self.imgfull:
-        cv2.namedWindow('mixframe',cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty('mixframe',cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
-      else:
-        cv2.namedWindow('mixframe',cv2.WINDOW_NORMAL)
 
       self.mphands = mp.solutions.hands
       self.mpdraws = mp.solutions.drawing_utils
@@ -359,8 +353,14 @@ class start:
           mixframe[                  int(0.01*mixframe.shape[0]):opframe.shape[0]+int(0.01*mixframe.shape[0]),
                    -opframe.shape[1]-int(0.01*mixframe.shape[0]):                -int(0.01*mixframe.shape[0])] = opframe
         
-        cv2.imshow('mixframe',mixframe)
-        cv2.resizeWindow('mixframe',scrw,scrh)
+        mixframe = cv2.rotate(mixframe,cv2.ROTATE_90_COUNTERCLOCKWISE)
+        mixframe = cv2.flip(mixframe,0)
+        mixframe = cv2.cvtColor(mixframe,cv2.COLOR_BGR2RGB)
+        mixframe = pygame.surfarray.make_surface(mixframe)
+        
+        screen.blit(mixframe, (0, 0))
+        pygame.display.update()
+
       else:
         if not imgonly:
           opframe = cv2.resize(opframe,None,fx=immusic.shape[0]/opframe.shape[0],fy=immusic.shape[0]/opframe.shape[0])

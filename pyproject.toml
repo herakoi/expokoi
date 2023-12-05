@@ -13,8 +13,8 @@ include = ["herakoi*"]
 exclude = ["images*"]
 
 [project]
-name = "herakoi"
-version = "0.2.0"
+name = "expokoi"
+version = "0.2.0a"
 authors = [
   { name="Michele Ginolfi", email="micheleginolfi@gmail.com" },
   { name="Luca Di Mascolo", email="lucadimascolo@gmail.com" },
@@ -29,13 +29,13 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Operating System :: OS Independent",
 ]
-dependencies = ["mido>=1.2","python-rtmidi==1.4.9","opencv-python>=4.6","numpy>=1.23","pynput>=1.7",
+dependencies = ["mido>=1.2","python-rtmidi==1.4.9","opencv-python>=4.6","numpy>=1.23","pynput>=1.7","pygame",
                 'mediapipe; platform_system != "Darwin" or  platform_machine != "arm64"',
         'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"']
 
 [project.urls]
-"Homepage" = "https://github.com/lucadimascolo/herakoi"
-"Bug Tracker" = "https://github.com/lucadimascolo/herakoi/issues"
+"Homepage" = "https://github.com/herakoi/expokoi"
+"Bug Tracker" = "https://github.com/herakoi/expokoi/issues"
 
 [project.scripts]
 herakoi = "herakoi:basic"
