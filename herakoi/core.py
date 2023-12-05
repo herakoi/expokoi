@@ -5,11 +5,10 @@ import re
 
 import cv2
 import mediapipe as mp
+import pygame
 
 import tkinter
 import tkinter.filedialog as filedialog
-
-import pygame; pygame.init()
 
 from pynput import keyboard
 from pynput.keyboard import Key
@@ -28,6 +27,8 @@ scrw = root.winfo_screenwidth()
 scrh = root.winfo_screenheight()
 fill = 1.00
 root.withdraw()
+
+pygame.init()
 
 global pressed; pressed = None
 global  screen; screen  = None
@@ -100,7 +101,8 @@ class start:
     modlist = ['single']
     if mode not in modlist:
       raise NotImplementedError('"{0}" mode is unknown'.format(mode))
-
+    elif mode in ['scan','adaptive','party']:
+      raise NotImplementedError('"{0} mode" not implemented'.format(mode))
     modinit = modlist.index(mode)
 
     self.valname = 'herakoi'
@@ -116,11 +118,11 @@ class start:
 
   # Start capture from webcam
   # -------------------------------------
-    self.imgfull = kwargs.get('fullscreen',False)
+    self.imgfull = True
     self.padfull = kwargs.get('pad',False) if self.imgfull else False
 
-    screen = pygame.display.set_mode((scrw,scrh), pygame.FULLSCREEN)
-
+    screen = pygame.display.set_mode((scrw,scrh),pygame.FULLSCREEN)
+  
     while True:
       self.opvideo = cv2.VideoCapture(video)
       self.opmusic = gethsv(imgpath[imginit])
@@ -131,12 +133,9 @@ class start:
 
       self.opindex = 8
       self.opthumb = 4
-      
-      if mode=='adaptive':
-        self.oppatch = None
-      else:
-        self.oppatch = np.minimum(self.opmusic.w,self.opmusic.h)
-        self.oppatch = int(np.clip((box/100)*self.oppatch,2,None))
+
+      self.oppatch = np.minimum(self.opmusic.w,self.opmusic.h)
+      self.oppatch = int(np.clip((box/100)*self.oppatch,2,None))
       
       self.opcolor = {'Left': (0,255,  0), 
                      'Right': (0,255,255)}
@@ -154,24 +153,6 @@ class start:
 
       if pressed=='esc':
         break
-      else:
-        if pressed in ['right','left']:
-          if pressed=='right':
-            imginit = imginit+1 if imginit<(len(imgpath)-1) else 0
-          elif pressed=='left':
-            imginit = imginit-1 if imginit>0 else len(imgpath)-1
-
-        if pressed in ['up','down']:
-          if pressed=='up':
-            modinit = modinit+1 if modinit<(len(modlist)-1) else 0
-          elif pressed=='down':
-            modinit = modinit-1 if modinit>0 else len(modlist)-1
-
-          mode = modlist[modinit]
-          print('changin mode to "{0}"'.format(mode),modinit)
-
-        pressed = None
-
 
 # Convert H and B to note and loudness
 # =====================================
@@ -229,7 +210,7 @@ class start:
 
     imgonly = kwargs.get('imgonly',False)
 
-    ophands = self.mphands.Hands(max_num_hands=2 if mode=='scan' else 1)
+    ophands = self.mphands.Hands(max_num_hands=1)
 
     onmusic = False
 
@@ -255,132 +236,90 @@ class start:
       bhmidiv = None
 
       if imhands.multi_hand_landmarks:
-        if mode=='scan':
-          pxmusic = [0,0,50]
-          for mi, immarks in enumerate(imhands.multi_hand_landmarks):
-            imlabel = imhands.multi_handedness[mi].classification[0].label
-            
-            self.mpdraws.draw_landmarks(immusic,immarks,self.mphands.HAND_CONNECTIONS,None)
-            self.mpdraws.draw_landmarks(opframe,immarks,self.mphands.HAND_CONNECTIONS,None)
+        for mi, immarks in enumerate(imhands.multi_hand_landmarks):
+          imlabel = imhands.multi_handedness[mi].classification[0].label
 
-            px, py, _ = self.posndraw(immusic,immarks,imlabel,False)
+          _       = self.posndraw(opframe,immarks,imlabel,True)
 
-            if imlabel=='Right': pxmusic[0] = px
-            if imlabel=='Left':  pxmusic[1] = py
+          if self.oppatch is None:
+            pxindex = immarks.landmark[self.opindex]
+            pxthumb = immarks.landmark[self.opthumb]
+            pxpatch = [int(np.abs(pxindex.x-pxthumb.x)*immusic.shape[1]),
+                        int(np.abs(pxindex.y-pxthumb.y)*immusic.shape[0])]
 
+            _ = self.posndraw(immusic,immarks,imlabel,True)
+            pxmusic = [0.50*(pxindex.x+pxthumb.x),0.50*(pxindex.y+pxthumb.y),0.50*(pxindex.z+pxthumb.z)]
+
+            for im in [immusic,opframe]:
+              cv2.rectangle(im,(int(pxthumb.x*im.shape[1]),int(pxthumb.y*im.shape[0])),
+                                (int(pxindex.x*im.shape[1]),int(pxindex.y*im.shape[0])),self.opcolor[imlabel],1)
+              cv2.circle(im,(int(pxmusic[0]*im.shape[1]),int(pxmusic[1]*im.shape[0])),2,self.opcolor[imlabel],-1)
+
+            pxmusic = [int(pxmusic[0]*immusic.shape[1]),
+                        int(pxmusic[1]*immusic.shape[0]),int(pxmusic[2]*300)]
+
+          else:
+            pxmusic = self.posndraw(immusic,immarks,imlabel,True)
             pxpatch = [self.oppatch,self.oppatch]
 
-          cv2.circle(immusic,(pxmusic[0],pxmusic[1]),pxmusic[2],(255,255,255),-1)
+          if imlabel=='Left':
+            bhmidif, bhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
+          
+          if imlabel=='Right':
+            rhmidif, rhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
 
-          bhmidif, bhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
+            bhmidif = rhmidif if bhmidif is None else int(0.50*(rhmidif+bhmidif))
+            bhmidiv = rhmidiv if bhmidiv is None else int(0.50*(rhmidiv+bhmidiv))
 
-        else:
-          for mi, immarks in enumerate(imhands.multi_hand_landmarks):
-            imlabel = imhands.multi_handedness[mi].classification[0].label
+        if (bhmidif is not None) and (bhmidiv is not None):
+          if time.time()-tictime>toctime and not onmusic:
+            self.midiout.send(mido.Message('note_on',channel=8,note=bhmidif,velocity=bhmidiv))
+            pxmusicold = pxmusic
+            onmusic = True
 
-            _       = self.posndraw(opframe,immarks,imlabel,True)
-
-            if self.oppatch is None:
-              pxindex = immarks.landmark[self.opindex]
-              pxthumb = immarks.landmark[self.opthumb]
-              pxpatch = [int(np.abs(pxindex.x-pxthumb.x)*immusic.shape[1]),
-                         int(np.abs(pxindex.y-pxthumb.y)*immusic.shape[0])]
-
-              _ = self.posndraw(immusic,immarks,imlabel,True)
-              pxmusic = [0.50*(pxindex.x+pxthumb.x),0.50*(pxindex.y+pxthumb.y),0.50*(pxindex.z+pxthumb.z)]
-
-              for im in [immusic,opframe]:
-                cv2.rectangle(im,(int(pxthumb.x*im.shape[1]),int(pxthumb.y*im.shape[0])),
-                                 (int(pxindex.x*im.shape[1]),int(pxindex.y*im.shape[0])),self.opcolor[imlabel],1)
-                cv2.circle(im,(int(pxmusic[0]*im.shape[1]),int(pxmusic[1]*im.shape[0])),2,self.opcolor[imlabel],-1)
- 
-              pxmusic = [int(pxmusic[0]*immusic.shape[1]),
-                         int(pxmusic[1]*immusic.shape[0]),int(pxmusic[2]*300)]
-
-            else:
-              pxmusic = self.posndraw(immusic,immarks,imlabel,True)
-              pxpatch = [self.oppatch,self.oppatch]
-
-            if (mode in ['single','adaptive'] and imlabel=='Left') or (mode=='party'):
-              bhmidif, bhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
+          if time.time()-tictime>toctime+offtime and np.hypot(pxmusicold[0]-pxmusic[0],pxmusicold[1]-pxmusic[1])>pxshift:
+            self.midiout.send(mido.Message('note_off',channel=8,note=bhmidif))
+            self.panic(); onmusic = False
             
-            if (mode in ['single','adaptive'] and imlabel=='Right'):
-              rhmidif, rhmidiv = self.getmex(pxmusic,pxpatch,vlims,flims)
-
-              bhmidif = rhmidif if bhmidif is None else int(0.50*(rhmidif+bhmidif))
-              bhmidiv = rhmidiv if bhmidiv is None else int(0.50*(rhmidiv+bhmidiv))
-
-        if mode in ['single','adaptive','scan']:
-          if (bhmidif is not None) and (bhmidiv is not None):
-            if time.time()-tictime>toctime and not onmusic:
-              self.midiout.send(mido.Message('note_on',channel=8,note=bhmidif,velocity=bhmidiv))
-              pxmusicold = pxmusic
-              onmusic = True
-
-            if time.time()-tictime>toctime+offtime and np.hypot(pxmusicold[0]-pxmusic[0],pxmusicold[1]-pxmusic[1])>pxshift:
-              self.midiout.send(mido.Message('note_off',channel=8,note=bhmidif))
-              self.panic(); onmusic = False
-              
-              tictime = time.time()
-          else: self.panic()
+            tictime = time.time()
+        else: self.panic()
       else: self.panic()
 
       mixframe = immusic
 
-      if self.imgfull:
-        hm, wm, _ = mixframe.shape
+      hm, wm, _ = mixframe.shape
 
-        if self.padfull:
-          if (hm/wm)>(scrh/scrw):
-            resframe = cv2.resize(mixframe,None,fx=scrh/hm,fy=scrh/hm)
-            mixframe = np.zeros((scrh,scrw,mixframe.shape[2]),dtype=mixframe.dtype)
-            mixframe[:,(scrw-resframe.shape[1])//2:(scrw-resframe.shape[1])//2+resframe.shape[1],:] = resframe.copy()
-          else:    
-            resframe = cv2.resize(mixframe,None,fx=scrw/wm,fy=scrw/wm)
-            mixframe = np.zeros((scrh,scrw,mixframe.shape[2]),dtype=mixframe.dtype)
-            mixframe[(scrh-resframe.shape[0])//2:(scrh-resframe.shape[0])//2+resframe.shape[0],:,:] = resframe.copy()
-        else:
-          if (hm/wm)>(scrh/scrw): 
-            mixframe = cv2.resize(mixframe,None,fx=scrw/wm,fy=scrw/wm)
-            mixframe = mixframe[(mixframe.shape[0]-scrh)//2:(mixframe.shape[0]-scrh)//2+scrh,:,:]
-          else:
-            mixframe = cv2.resize(mixframe,None,fx=scrh/hm,fy=scrh/hm)
-            mixframe = mixframe[:,(mixframe.shape[1]-scrw)//2:(mixframe.shape[1]-scrw)//2+scrw,:]
-
-        if not imgonly:            
-          opframe  = cv2.resize(opframe,None,fx=0.20*mixframe.shape[0]/opframe.shape[0],
-                                             fy=0.20*mixframe.shape[0]/opframe.shape[0])
-          mixframe[                  int(0.01*mixframe.shape[0]):opframe.shape[0]+int(0.01*mixframe.shape[0]),
-                   -opframe.shape[1]-int(0.01*mixframe.shape[0]):                -int(0.01*mixframe.shape[0])] = opframe
-        
-        mixframe = cv2.rotate(mixframe,cv2.ROTATE_90_COUNTERCLOCKWISE)
-        mixframe = cv2.flip(mixframe,0)
-        mixframe = cv2.cvtColor(mixframe,cv2.COLOR_BGR2RGB)
-        mixframe = pygame.surfarray.make_surface(mixframe)
-        
-        screen.blit(mixframe, (0, 0))
-        pygame.display.update()
-
+      if self.padfull:
+        if (hm/wm)>(scrh/scrw):
+          resframe = cv2.resize(mixframe,None,fx=scrh/hm,fy=scrh/hm)
+          mixframe = np.zeros((scrh,scrw,mixframe.shape[2]),dtype=mixframe.dtype)
+          mixframe[:,(scrw-resframe.shape[1])//2:(scrw-resframe.shape[1])//2+resframe.shape[1],:] = resframe.copy()
+        else:    
+          resframe = cv2.resize(mixframe,None,fx=scrw/wm,fy=scrw/wm)
+          mixframe = np.zeros((scrh,scrw,mixframe.shape[2]),dtype=mixframe.dtype)
+          mixframe[(scrh-resframe.shape[0])//2:(scrh-resframe.shape[0])//2+resframe.shape[0],:,:] = resframe.copy()
       else:
-        if not imgonly:
-          opframe = cv2.resize(opframe,None,fx=immusic.shape[0]/opframe.shape[0],fy=immusic.shape[0]/opframe.shape[0])
+        if (hm/wm)>(scrh/scrw): 
+          mixframe = cv2.resize(mixframe,None,fx=scrw/wm,fy=scrw/wm)
+          mixframe = mixframe[(mixframe.shape[0]-scrh)//2:(mixframe.shape[0]-scrh)//2+scrh,:,:]
+        else:
+          mixframe = cv2.resize(mixframe,None,fx=scrh/hm,fy=scrh/hm)
+          mixframe = mixframe[:,(mixframe.shape[1]-scrw)//2:(mixframe.shape[1]-scrw)//2+scrw,:]
 
-          mixframe = np.zeros((max(opframe.shape[0], immusic.shape[0]), opframe.shape[1] + immusic.shape[1], 3), dtype=np.uint8)
-          mixframe[:opframe.shape[0],:opframe.shape[1],:] = opframe
-          mixframe[:immusic.shape[0],opframe.shape[1]:,:] = immusic
+      if not imgonly:            
+        opframe  = cv2.resize(opframe,None,fx=0.20*mixframe.shape[0]/opframe.shape[0],
+                                            fy=0.20*mixframe.shape[0]/opframe.shape[0])
+        mixframe[                  int(0.01*mixframe.shape[0]):opframe.shape[0]+int(0.01*mixframe.shape[0]),
+                  -opframe.shape[1]-int(0.01*mixframe.shape[0]):                -int(0.01*mixframe.shape[0])] = opframe
 
-        hm, wm, _ = mixframe.shape
-
-        if   (hm/wm)>(scrh/scrw):
-          hr = int((0.90 if imgonly else fill)*scrh)
-          wr = int((0.90 if imgonly else fill)*scrh*wm/hm)
-        elif (hm/wm)<=(scrh/scrw):
-          hr = int((0.90 if imgonly else fill)*scrw*hm/wm)
-          wr = int((0.90 if imgonly else fill)*scrw)
-
-      # Show the combined image in a window
-        cv2.imshow('mixframe',mixframe)
-        cv2.resizeWindow('mixframe',wr,hr)
+      mixframe = cv2.rotate(mixframe, cv2.ROTATE_90_COUNTERCLOCKWISE)
+      mixframe = cv2.flip(mixframe,0)
+      mixframe = cv2.cvtColor(mixframe, cv2.COLOR_BGR2RGB)
+      mixframe = pygame.surfarray.make_surface(mixframe)
+      
+      screen.blit(mixframe,(0,0))
+      
+      pygame.display.update()
 
       if (cv2.waitKey(1) & 0xFF == ord('q')) or (pressed is not None): break
 
