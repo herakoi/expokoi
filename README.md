@@ -28,7 +28,7 @@ python -m pip install git+https://github.com/herakoi/expokoi.git
 
 
 ### Common issues
-We observed that the `opencv-python` library has some compatibility issues with older operating systems (e.g., earlier than MacOS 11 Big Sur in the case of Apple machines). In such a case, installing a version of `opencv-python` earlier than `4.0` seems to solve the issue:
+We found that the `opencv-python` library has some compatibility issues with older operating systems (e.g., earlier than MacOS 11 Big Sur in the case of Apple machines). In such a case, installing a version of `opencv-python` earlier than `4.0` seems to solve the issue:
 
 ```
 python -m pip install --force-reinstall "opencv-python<4"
