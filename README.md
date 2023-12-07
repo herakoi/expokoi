@@ -1,35 +1,28 @@
-# herakoi 
+# expokoi
 
+## Installation
+The sound synthesis in `expokoi` makes use of a SoundFont2 specifications and requires an external synthesis driver, `fluidsynth`.
+If you are running `expokoi` within a `conda` environment, you can install `fluidsynth` by running
 
-[![DOI](https://zenodo.org/badge/515594944.svg)](https://zenodo.org/badge/latestdoi/515594944)
-![PyPI version](https://img.shields.io/pypi/v/herakoi) [![Documentation Status](https://readthedocs.org/projects/herakoi/badge/?version=latest)](https://herakoi.readthedocs.io/en/latest/?badge=latest)
+```
+conda install -c conda-forge fluidsynth
+```
 
-`herakoi` is a motion-sensing sonification experiment. 
+If you are on Windows, you can also try with the installer on the [`fluidsynth` release](https://github.com/FluidSynth/fluidsynth/releases) page.
 
-It uses a Machine Learning (ML)-based algorithm for hand recognition to track in real-time the position of your hands in the scene observed by a webcam connected to your computer. The model landmarks coordinates of your hands are then re-projected onto the pixel coordinates of your favorite image. The visual properties of the "touched" pixels (at the moment, color and saturation) are then converted into sound properties of your favorite instrument, which you can choose from your favorite virtual MIDI keyboard.
+Then, to install `expokoi`: 
 
-In this way, you can hear the sound of any images, for educational, artistic, or just-fun purposes!
+```
+git clone https://github.com/herakoi/expokoi.git
+cd expokoi
+python -m pip install -e .
+```
 
-Fully written in python, `herakoi` requires relatively little computational power and can be run on different on the most popular operating systems (macOS, Microsoft Windows, Linux). 
+or directly
 
-## Usage
-
-1. run `herakoi path_to_your_favorite_image`
-2. open your favorite MIDI player (e.g., if you run `herakoi` on an Apple computer, GarageBang is a good option) 
-3. have fun!
-
-You can customize your `herakoi` by using the following flags:
-* `--notes XX YY`, that will allow the pitch to span the range from the note `XX` and `YY` (with `XX` equal to, e.g., C4 for middle C)
-* `--volume ZZ`, that will set lower threshold for the note volume (with `ZZ` in percentage)
-* `--switch`, inverting the color-brightness mapping 
-
-## FAQs
-
-A list of frequently asked questions.
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change, or contact the authors.
+```
+python -m pip install git+https://github.com/herakoi/expokoi.git
+```
 
 ## License
 Copyright 2022 Michele Ginolfi, Luca Di Mascolo, and contributors.
