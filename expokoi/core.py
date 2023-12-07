@@ -80,7 +80,7 @@ def on_press(key):
 # =====================================
 class start:
   def __init__(self,image=None,mode='single',port={},video=0,box=2,switch=True,**kwargs):
-    fluidsynth.init('{0}/library/expokoi.sf2'.format(os.path.dirname(__file__)))
+    fluidsynth.init('{0}/expokoi.sf2'.format(os.path.dirname(__file__)))
     
     instrument = kwargs.get('instrument','piano')
 
