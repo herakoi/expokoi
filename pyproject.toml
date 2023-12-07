@@ -2,16 +2,19 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.isort]
+known_third_party = ["fluidsynth"]
+
 [tool.setuptools]
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["herakoi*"]
+include = ["expokoi*"]
 exclude = ["images*"]
 
 [project]
 name = "expokoi"
-version = "0.2.0a"
+version = "0.1.1"
 authors = [
   { name="Michele Ginolfi", email="micheleginolfi@gmail.com" },
   { name="Luca Di Mascolo", email="lucadimascolo@gmail.com" },
@@ -26,7 +29,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Operating System :: OS Independent",
 ]
-dependencies = ["mido>=1.2","python-rtmidi==1.4.9","opencv-python>=4.6","numpy>=1.23","pynput>=1.7","pygame>=2.5.2",
+dependencies = ["mingus>=0.5","opencv-python>=4.6","numpy>=1.23","pynput>=1.7","pygame>=2.5.2",
                 'mediapipe; platform_system != "Darwin" or  platform_machine != "arm64"',
         'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"']
 
@@ -35,4 +38,4 @@ dependencies = ["mido>=1.2","python-rtmidi==1.4.9","opencv-python>=4.6","numpy>=
 "Bug Tracker" = "https://github.com/herakoi/expokoi/issues"
 
 [project.scripts]
-herakoi = "herakoi:basic"
+expokoi = "expokoi:basic"
