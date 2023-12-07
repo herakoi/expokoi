@@ -123,8 +123,7 @@ class start:
     self.imgfull = True
     self.padfull = kwargs.get('pad',False) if self.imgfull else False
 
-  # screen = pygame.display.set_mode((scrw,scrh),pygame.FULLSCREEN)
-    screen = pygame.display.set_mode((scrw,scrh),pygame.RESIZABLE)
+    screen = pygame.display.set_mode((scrw,scrh),pygame.FULLSCREEN)
   
     while True:
       self.opvideo = cv2.VideoCapture(video)
