@@ -9,7 +9,7 @@ known_third_party = ["fluidsynth"]
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["expokoi*","expokoi/library"]
+include = ["expokoi*"]
 exclude = ["images*"]
 
 [project]
