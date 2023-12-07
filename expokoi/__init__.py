@@ -12,7 +12,7 @@ def basic():
                     help='Change the low volume threshold (in percentage)',
                     default=20,metavar=('volume'),type=float)
   pars.add_argument('--box',
-                    help='sonification box size in units of frame percentage',
+                    help='Sonification box size in units of frame percentage',
                     default=2,metavar=('box'),type=float)
   pars.add_argument('--video',
                     help='Select video source',
@@ -21,7 +21,8 @@ def basic():
   pars.add_argument('--imgonly',action='store_true')
   pars.add_argument('--pad',action='store_true')
   pars.add_argument('--instrument',metavar=('instrument'),default='piano',
-                    choices=['piano','bells','organ','saw','space','synth','horn'])
+                    choices=['piano','bells','organ','saw','space','synth','horn'],
+                    help='Select instrument [piano|bells|organ|saw|space|synth|horn]')
   args = pars.parse_args()
 
   start(image = args.image,
