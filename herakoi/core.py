@@ -82,9 +82,22 @@ class start:
     global pressed
     global screen
 
+    self.valname = 'herakoi'
+
     self.listener = keyboard.Listener(on_press=on_press)
     self.listener.start()  
 
+  # Build virtual MIDI port
+  # -------------------------------------
+    midinew = rtmidi.MidiOut()
+
+    if midinew.get_ports(): midinew.open_port(port.get('value',0))
+    else: midinew.open_virtual_port(port.get('name',self.valname))
+
+    self.midiout = mido.open_output(port.get('name',self.valname),virtual=True)
+
+  # Select image
+  # -------------------------------------
     self.switch = switch
 
     if image is None:
@@ -105,23 +118,13 @@ class start:
       raise NotImplementedError('"{0} mode" not implemented'.format(mode))
     modinit = modlist.index(mode)
 
-    self.valname = 'herakoi'
-
-  # Build virtual MIDI port
-  # -------------------------------------
-    midinew = rtmidi.MidiOut()
-
-    if midinew.get_ports(): midinew.open_port(port.get('value',0))
-    else: midinew.open_virtual_port(port.get('name',self.valname))
-
-    self.midiout = mido.open_output(port.get('name',self.valname),virtual=True)
-
   # Start capture from webcam
   # -------------------------------------
     self.imgfull = True
     self.padfull = kwargs.get('pad',False) if self.imgfull else False
 
-    screen = pygame.display.set_mode((scrw,scrh),pygame.FULLSCREEN)
+  # screen = pygame.display.set_mode((scrw,scrh),pygame.FULLSCREEN)
+    screen = pygame.display.set_mode((scrw,scrh),pygame.RESIZABLE)
   
     while True:
       self.opvideo = cv2.VideoCapture(video)
